@@ -1,17 +1,25 @@
 import pyglet, sys, os, time
 from sty import Style, RgbFg, fg
+from libcpp cimport bool
+from libcpp.string cimport string
 
-class gif2ASCII:
+cdef class gif2ASCII:
     clear_console = 'clear' if os.name == 'posix' else 'cls'
-    framesRGB = []
-    def __init__(self, animated_gif_path):      
+    cdef object framesRGB
+    cdef object framesL
+    cdef object anim
+    cdef int width
+    cdef int len
+    cdef tuple chars
+    
+    def __init__(self, char *animated_gif_path):      
         # load image
         self.anim = pyglet.image.load_animation(animated_gif_path)
         self.width = self.anim.frames[0].image.width # global img width
         # Gets a list of luminance ('L') values of each frame
         self.framesL = [frame.image.get_data('L', -self.width) for frame in self.anim.frames]
 
-    def animate(self, colored=False, invert=True):
+    def animate(self, bint colored=False, bint invert=True):
         # map greyscale to characters
         self.chars = ('#', '#', '@', '%', '=', '+', '*', ':', '-', '.', ' ') if invert is True else (' ', '.', '-', ':', '*', '+', '=', '%', '@', '#', '#')
         self.len = len(self.chars)
@@ -20,13 +28,14 @@ class gif2ASCII:
         else: self.greyscale()
 
     def greyscale(self):
+        cdef Py_UNICODE outstr
+        cdef int i
         print('animation ready2run, running..\n')
         # Step through forever, frame by frame
         while True:
-            for frame in self.yielderL():
+            for frame in self.framesL:
                 # Built up the string, by translating luminance values to characters
-                outstr = ''
-
+                outstr = 'a'
                 # Map Luminance and repeat each char twice for correct aspect ratio
                 for (i, pixel) in enumerate(frame):
                     outstr += self.chars[(int(pixel) * (self.len - 1)) // 255]*2 + \
@@ -43,24 +52,24 @@ class gif2ASCII:
 
             time.sleep(3)
 
-    def yielderRGB(self):
-        for frame in self.framesRGB:
-            yield frame
-
-    def yielderL(self):
-        for frame in self.framesL:
-            yield frame
 
     def color(self):
         # Gets a list of RGB ('RGB') values of each frame
         if not self.framesRGB:
             self.framesRGB = [frame.image.get_data('RGB', -self.width*3) for frame in self.anim.frames]
+
+        cdef Py_UNICODE outstr
+        cdef int R
+        cdef int G
+        cdef int B
+        cdef int pixel
+        cdef int i
         print('animation ready2run, running..\n')
         # Step through forever, frame by frame
         while True:
-            for frame,frameL in zip(self.yielderRGB(), self.yielderL()):
+            for frame,frameL in zip(self.framesRGB, self.framesL):
                 # Built up the string, by translating luminance values to characters
-                outstr = ''
+                outstr = 'a'
 
                 # Define color from contigously stored RGB vals, map Luminance and repeat each char twice for correct aspect ratio
                 for i in range(0,len(frame)-2,3):
@@ -69,7 +78,7 @@ class gif2ASCII:
                     B = frame[i+2]
                     pixel = frameL[i//3]
                     fg.color = Style(RgbFg(R, G, B))
-                    outstr += fg.color + self.chars[(int(pixel) * (self.len - 1)) // 255]*2  + fg.rs + \
+                    outstr += fg.color + self.chars[(int(pixel) * (self.len - 1)) // 255]*2 + fg.rs + \
                               ('\n' if (i + 3) % (self.width*3) == 0 else '')
 
                 # Clear the console
@@ -88,7 +97,7 @@ if __name__ == '__main__':  # EXAMPLE USE: can be done from console
     # set parameters(config)
     colored = False # enable color mapping
     invert = True # invert greyscale (ASCII) mapping
-    animated_gif_path = u"C:/Users/sebi/Desktop/GIFs/test.gif"
+    animated_gif_path = b"C:/Users/sebi/Desktop/GIFs/test.gif"
     # create a new gif2ASCII converter
     conv = gif2ASCII(animated_gif_path)
     # run the animation based on some animated gif with current parameters
