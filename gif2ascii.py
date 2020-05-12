@@ -3,7 +3,6 @@ from sty import Style, RgbFg, fg
 
 class gif2ASCII:
     clear_console = 'clear' if os.name == 'posix' else 'cls'
-    framesRGB = []
     def __init__(self, animated_gif_path):      
         # load image
         self.anim = pyglet.image.load_animation(animated_gif_path)
